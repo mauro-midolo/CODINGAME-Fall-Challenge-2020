@@ -17,8 +17,9 @@ public class WeighCalculatorTest {
                 new Cast(15, "CAST", -1, 0, +1, 0, 0, 0, 0, true, false)
         );
 
-        int resultSteps = new WeighCalculator().calculateStepsFor(2, casts);
-        assertEquals(3, resultSteps);
+        Route route = new Route(0,casts);
+                new WeighCalculator().calculateStepsFor(2, route);
+        assertEquals(3, route.getCurrentSteps());
     }
 
     @Test
@@ -29,20 +30,51 @@ public class WeighCalculatorTest {
                 new Cast(15, "CAST", -1, 0, +1, 0, 0, 0, 0, true, false)
         );
 
-        int resultSteps = new WeighCalculator().calculateStepsFor(2, casts);
-        assertEquals(3, resultSteps);
+        Route route = new Route(0, casts);
+        new WeighCalculator().calculateStepsFor(2, route);
+        assertEquals(3, route.getCurrentSteps());
     }
 
     @Test
     public void shouldCalculateNumberOfSteps3() throws IOException {
         List<Component> casts = Arrays.asList(
-                new Cast(1, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false),
-                new Cast(10, "CAST", -2, +1, 0, 0, 0, 0, 0, true, false)
+               new Cast(1, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false),
+               new Cast(10, "CAST", -2, +1, 0, 0, 0, 0, 0, true, false)
         );
 
-        int resultSteps = new WeighCalculator().calculateStepsFor(1, casts);
-        assertEquals(4, resultSteps);
+        Route route = new Route(0, casts);
+        new WeighCalculator().calculateStepsFor(1, route);
+        assertEquals(4, route.getCurrentSteps());
     }
+
+    @Test
+    public void shouldCalculateNumberOfStepsButMinimum() throws IOException {
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +1, -2, 0, 0, 0, 0, 0, true, false),
+                new Cast(10, "CAST", 0, +1, -2, 0, 0, 0, 0, true, false),
+                new Cast(11, "CAST", 0, 0, +1, 0, 0, 0, 0, true, false),
+                new Cast(12, "CAST", 0, +1, 0, -1, 0, 0, 0, true, false),
+                new Cast(13, "CAST", 0, 0, 0, +1, 0, 0, 0, true, false)
+        );
+
+        Route route = new Route(0, casts);
+        new WeighCalculator().calculateStepsFor(RupeesIndexer.BLUE.getIndex(), route);
+        assertEquals(6, route.getCurrentSteps());
+    }
+
+    @Test
+    public void shouldCalculateNumberOfStepsButMinimumComplex() throws IOException {
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +1, -1, 0, 0, 0, 0, 0, true, false),
+                new Cast(10, "CAST", 0, +1, 0, 0, 0, 0, 0, true, false),
+                new Cast(11, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false)
+        );
+
+        Route route = new Route(0, casts);
+        new WeighCalculator().calculateStepsFor(RupeesIndexer.BLUE.getIndex(), route);
+        assertEquals(1, route.getCurrentSteps());
+    }
+
     @Test
     public void shouldCalculateNumberOfSteps4() throws IOException {
         List<Component> casts = Arrays.asList(
@@ -51,8 +83,9 @@ public class WeighCalculatorTest {
                 new Cast(12, "CAST", 0, -2, +1, 0, 0, 0, 0, true, false)
         );
 
-        int resultSteps = new WeighCalculator().calculateStepsFor(2, casts);
-        assertEquals(6, resultSteps);
+        Route route = new Route(0, casts);
+        new WeighCalculator().calculateStepsFor(RupeesIndexer.ORANGE.getIndex(), route);
+        assertEquals(6, route.getCurrentSteps());
     }
 
     @Test
@@ -64,9 +97,8 @@ public class WeighCalculatorTest {
         );
 
         Map<Integer, Integer> resultSteps = new WeighCalculator().calculateSteps(casts);
-        assertEquals(1, resultSteps.get(0).intValue());
-        assertEquals(2, resultSteps.get(1).intValue());
-        assertEquals(6, resultSteps.get(2).intValue());
+        assertEquals(1, resultSteps.get(RupeesIndexer.BLUE.getIndex()).intValue());
+        assertEquals(2, resultSteps.get(RupeesIndexer.GREEN.getIndex()).intValue());
+        assertEquals(6, resultSteps.get(RupeesIndexer.ORANGE.getIndex()).intValue());
     }
-
 }

@@ -118,10 +118,10 @@ abstract class Component implements Cloneable {
     }
 
     public int getCostFor(int index) {
-        if (index == 0) return blueCost;
-        if (index == 1) return greenCost;
-        if (index == 2) return orangeCost;
-        if (index == 3) return yellowCost;
+        if (index == RupeesIndexer.BLUE.getIndex()) return blueCost;
+        if (index == RupeesIndexer.GREEN.getIndex()) return greenCost;
+        if (index == RupeesIndexer.ORANGE.getIndex()) return orangeCost;
+        if (index == RupeesIndexer.YELLOW.getIndex()) return yellowCost;
         return 0;
     }
 
@@ -143,6 +143,20 @@ abstract class Component implements Cloneable {
 
     public boolean isCastable() {
         return castable;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Component component = (Component) o;
+        return actionId == component.actionId &&
+                Objects.equals(actionType, component.actionType);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(actionId, actionType);
     }
 }
 
@@ -315,53 +329,120 @@ class WeighCalculator {
         Map<Integer, Integer> rupieSteps = new HashMap<>();
         for (int i = 0; i < 4; i += 1) {
             try {
-                rupieSteps.put(i, calculateStepsFor(i, casts.stream().map(Component::clone).collect(Collectors.toList())));
+                Route route = new Route(0, casts);
+                calculateStepsFor(i, route);
+                rupieSteps.put(i, route.getCurrentSteps());
             } catch (IOException ignored) {
             }
         }
         return rupieSteps;
     }
 
-    int calculateStepsFor(int index, List<Component> casts) throws IOException {
-        int count = 0;
-        Optional<Component> castWithColor = getCastWith(index, casts);
-        if (!castWithColor.isPresent()) {
-            throw new IOException("No color present in Cast: " + index);
-        }
-        Component first = castWithColor.get();
+    void calculateStepsFor(int index, Route currentRoute) throws IOException {
 
-        for (int i = 0; i < 4; i += 1) {
-            count = executeCartsFor(casts, count, first, i);
+        List<Component> castsWithColor = getCastWith(index, currentRoute.getCasts());
+        if (castsWithColor.isEmpty()) {
+            throw new IOException("No color present" + index);
         }
 
-        if (!first.isCastable()) {
-            count++;
-            casts.forEach(cast -> cast.setCastable(true));
-        } else {
-            first.setCastable(false);
+        Route minCastRoute = null;
+        for (Component castWithColor : castsWithColor) {
+            minCastRoute = calculateBestLeaf(currentRoute, minCastRoute, castWithColor);
         }
-
-        count++;
-        return count;
+        currentRoute.updateCasts(minCastRoute.getCasts());
+        currentRoute.updateCurrentSteps(minCastRoute.getCurrentSteps());
     }
 
-    private int executeCartsFor(List<Component> casts, int count, Component first, int index) throws IOException {
-        if (first.getCostFor(index) < 0) {
-            for (int i = 0; i < getDebitsCount(first, index); i += 1) {
-                count += calculateStepsFor(index, casts);
+    private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor) throws IOException {
+        Route leafRoute = currentRoute.clone();
+        Component leafCastWithColor = leafRoute.getCast(String.valueOf(castWithColor.actionId));
+        for (RupeesIndexer rupee : RupeesIndexer.values()) {
+            executeCartsFor(leafRoute, leafCastWithColor, rupee.getIndex());
+        }
+        if (!leafCastWithColor.isCastable()) {
+            leafRoute.increaseSteps();
+            leafRoute.getCasts().forEach(cast -> cast.setCastable(true));
+        } else {
+            leafCastWithColor.setCastable(false);
+        }
+        leafRoute.increaseSteps();
+        if (minCastRoute == null || minCastRoute.getCurrentSteps() > leafRoute.getCurrentSteps()) {
+            minCastRoute = leafRoute;
+        }
+        return minCastRoute;
+    }
 
+    private void executeCartsFor(Route leafRoute, Component leafCast, int index) throws IOException {
+        if (leafCast.getCostFor(index) < 0) {
+            for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
+                calculateStepsFor(index, leafRoute);
+                String a = "";
             }
         }
-        return count;
     }
 
     private int getDebitsCount(Component first, int index) {
         return abs(first.getCostFor(index));
     }
 
-    private Optional<Component> getCastWith(int i, List<Component> casts) {
-        return casts.stream().filter(cast -> cast.getCostFor(i) > 0).findFirst();
+    private List<Component> getCastWith(int i, List<Component> casts) {
+        return casts.stream().filter(cast -> cast.getCostFor(i) > 0).collect(Collectors.toList());
+    }
+}
+
+enum RupeesIndexer {
+    BLUE(0),
+    GREEN(1),
+    ORANGE(2),
+    YELLOW(3);
+
+    public int getIndex() {
+        return index;
     }
 
+    private final int index;
+
+    RupeesIndexer(int index) {
+        this.index = index;
+    }
+}
+
+class Route implements Cloneable {
+    private int currentSteps;
+    private List<Component> casts;
+
+    Route(int currentSteps, List<Component> casts) {
+        this.casts = casts.stream().map(Component::clone).collect(Collectors.toList());
+        this.currentSteps = currentSteps;
+    }
+
+    @Override
+    public Route clone() {
+        return new Route(currentSteps, casts.stream().map(Component::clone).collect(Collectors.toList()));
+    }
+
+    public void updateCurrentSteps(int newCurrentSteps) {
+        this.currentSteps = newCurrentSteps;
+    }
+
+    public void updateCasts(List<Component> newCasts) {
+        Collections.copy(casts, newCasts);
+    }
+
+    public List<Component> getCasts() {
+        return casts;
+    }
+
+    public Component getCast(String ActionId) {
+        return casts.stream().filter(component -> component.getActionId().equals(String.valueOf(ActionId))).findFirst().get();
+    }
+
+    public void increaseSteps() {
+        currentSteps++;
+    }
+
+    public int getCurrentSteps() {
+        return currentSteps;
+    }
 
 }
