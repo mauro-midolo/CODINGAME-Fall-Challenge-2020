@@ -250,12 +250,12 @@ class Chooser {
         if (inventoryChoose.getActionType().equals(Brew.COMPONENT)) {
             return Brew.COMPONENT + " " + inventoryChoose.getActionId();
         }
-        Map<Integer, Integer> rupieSteps = new WeighCalculator().calculateSteps(casts);
+        Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(casts);
 
         Component cheapestBrew = null;
         Double maxRateScore = null;
         for (Component brew : brews) {
-            double rateScore = calculateRateScore(me, brew, rupieSteps);
+            double rateScore = calculateRateScore(me, brew, rupeeSteps);
             if (cheapestBrew == null || rateScore > maxRateScore) {
                 cheapestBrew = brew;
                 maxRateScore = rateScore;
@@ -265,7 +265,7 @@ class Chooser {
         return Wait.COMPONENT;
     }
 
-    public double calculateRateScore(PlayerInventory me, Component brew, Map<Integer, Integer> rupieMandatorySteps) {
+    public double calculateRateScore(PlayerInventory me, Component brew, Map<Integer, Route> rupeeMandatorySteps) {
         int targetBlue = brew.getBlueCost();
         int targetYellow = brew.getYellowCost();
         int targetOrange = brew.getOrangeCost();
@@ -277,17 +277,17 @@ class Chooser {
         int missingYellow = Math.abs(targetYellow + me.getYellow());
         int missingOrange = Math.abs(targetOrange + me.getOrange());
         int missingGreen = Math.abs(targetGreen + me.getGreen());
-        if ((missingBlue > 0 && !rupieMandatorySteps.containsKey(0)) ||
-                (missingBlue > 1 && !rupieMandatorySteps.containsKey(1)) ||
-                (missingBlue > 2 && !rupieMandatorySteps.containsKey(2)) ||
-                (missingBlue > 3 && !rupieMandatorySteps.containsKey(3))
+        if ((missingBlue > 0 && !rupeeMandatorySteps.containsKey(0)) ||
+                (missingBlue > 1 && !rupeeMandatorySteps.containsKey(1)) ||
+                (missingBlue > 2 && !rupeeMandatorySteps.containsKey(2)) ||
+                (missingBlue > 3 && !rupeeMandatorySteps.containsKey(3))
         ) {
             return 0;
         }
-        return (1D * price) / (rupieMandatorySteps.get(0) * missingBlue +
-                rupieMandatorySteps.get(1) * missingGreen +
-                rupieMandatorySteps.get(2) * missingOrange +
-                rupieMandatorySteps.get(3) * missingYellow);
+        return (1D * price) / (rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue +
+                rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen +
+                rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange +
+                rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow);
     }
 
 }
@@ -325,17 +325,17 @@ class ComponentBuilder {
 }
 
 class WeighCalculator {
-    public Map<Integer, Integer> calculateSteps(List<Component> casts) {
-        Map<Integer, Integer> rupieSteps = new HashMap<>();
+    public Map<Integer, Route> calculateSteps(List<Component> casts) {
+        Map<Integer, Route> rupeeSteps = new HashMap<>();
         for (int i = 0; i < 4; i += 1) {
             try {
                 Route route = new Route(0, casts);
                 calculateStepsFor(i, route);
-                rupieSteps.put(i, route.getCurrentSteps());
+                rupeeSteps.put(i, route);
             } catch (IOException ignored) {
             }
         }
-        return rupieSteps;
+        return rupeeSteps;
     }
 
     void calculateStepsFor(int index, Route currentRoute) throws IOException {

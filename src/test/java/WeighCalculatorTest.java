@@ -96,9 +96,9 @@ public class WeighCalculatorTest {
                 new Cast(12, "CAST", 0, -2, +1, 0, 0, 0, 0, true, false)
         );
 
-        Map<Integer, Integer> resultSteps = new WeighCalculator().calculateSteps(casts);
-        assertEquals(1, resultSteps.get(RupeesIndexer.BLUE.getIndex()).intValue());
-        assertEquals(2, resultSteps.get(RupeesIndexer.GREEN.getIndex()).intValue());
-        assertEquals(6, resultSteps.get(RupeesIndexer.ORANGE.getIndex()).intValue());
+        Map<Integer, Route> resultSteps = new WeighCalculator().calculateSteps(casts);
+        assertEquals(1, resultSteps.get(RupeesIndexer.BLUE.getIndex()).getCurrentSteps());
+        assertEquals(2, resultSteps.get(RupeesIndexer.GREEN.getIndex()).getCurrentSteps());
+        assertEquals(6, resultSteps.get(RupeesIndexer.ORANGE.getIndex()).getCurrentSteps());
     }
 }
