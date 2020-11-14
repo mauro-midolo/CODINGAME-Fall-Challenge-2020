@@ -32,4 +32,38 @@ public class ChooserTest {
         assertEquals("WAIT", choose);
     }
 
+    @Test
+    public void shouldRestToContinue() {
+        PlayerInventory me = new PlayerInventory(2, 0, 0, 1, 0);
+        List<Component> brews = Arrays.asList(
+                new Brew(1, "BREW", -2, 0, 0, -2, 10, 0, 0, false, false)
+        );
+
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", 2, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(2, "CAST", -1, +1, 0, 0, 0, 0, 0, false, false),
+                new Cast(3, "CAST", 0, -1, +1, 0, 0, 0, 0, false, false),
+                new Cast(4, "CAST", 0, 0, -1, 1, 0, 0, 0, false, false)
+        );
+        String choose = new Chooser().getBest(me, brews, casts);
+        assertEquals("REST", choose);
+    }
+
+
+    @Test
+    public void shouldWaitInCaseNoAction() {
+        PlayerInventory me = new PlayerInventory(0, 0, 0, 1, 0);
+        List<Component> brews = Collections.singletonList(
+                new Brew(1, "BREW", -2, 0, 0, 0, 10, 0, 0, false, false)
+        );
+
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", 0, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(2, "CAST", 0, +1, 0, 0, 0, 0, 0, false, false),
+                new Cast(3, "CAST", 0, -1, +1, 0, 0, 0, 0, false, false),
+                new Cast(4, "CAST", 0, 0, -1, 1, 0, 0, 0, false, false)
+        );
+        String choose = new Chooser().getBest(me, brews, casts);
+        assertEquals("WAIT", choose);
+    }
 }

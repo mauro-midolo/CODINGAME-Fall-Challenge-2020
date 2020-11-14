@@ -71,6 +71,13 @@ class PlayerInventory implements Cloneable {
         if (index == RupeesIndexer.YELLOW.getIndex()) return this.getYellow();
         return 0;
     }
+
+    public void update(int index, int deltaValue) {
+        if (index == RupeesIndexer.BLUE.getIndex()) blue += deltaValue;
+        if (index == RupeesIndexer.GREEN.getIndex()) green += deltaValue;
+        if (index == RupeesIndexer.ORANGE.getIndex()) orange += deltaValue;
+        if (index == RupeesIndexer.YELLOW.getIndex()) yellow += deltaValue;
+    }
 }
 
 abstract class Component implements Cloneable {
@@ -195,7 +202,8 @@ class Wait extends Component {
     }
 }
 
-class Cast extends Component implements Cloneable {
+class
+Cast extends Component implements Cloneable {
     public static String COMPONENT = "CAST";
 
     public Cast(int actionId, String actionType, int blueCost, int greenCost, int orangeCost, int yellowCost, int price, int tomeIndex, int taxCount, boolean castable, boolean repeatable) {
@@ -311,7 +319,9 @@ class Chooser {
         if (inventoryChoose.getActionType().equals(Brew.COMPONENT)) {
             return inventoryChoose.toString();
         }
-
+        if (casts.size() == 0) {
+            return inventoryChoose.toString();
+        }
         Component best = new BestCastChooser().getBest(me, brews, casts);
         return best.toString();
     }
@@ -338,18 +348,24 @@ class BestBrewChooser {
 
 class BestCastChooser {
     public Component getBest(PlayerInventory me, List<Component> brews, List<Component> casts) {
-        Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(me, casts);
+
         Component cheapestBrew = null;
         Double maxRateScore = null;
+        Map<Integer, Route> bestRupeeSteps = null;
         for (Component brew : brews) {
+            Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(me, casts, brew);
             double rateScore = calculateRateScore(me, brew, rupeeSteps);
             if (cheapestBrew == null || rateScore > maxRateScore) {
                 cheapestBrew = brew;
                 maxRateScore = rateScore;
+                bestRupeeSteps = rupeeSteps;
             }
         }
-        List<Integer> missing = getMissing(cheapestBrew, me);
-        return rupeeSteps.get(missing.get(0)).getSteps().get(0);
+        Optional<Integer> missingIndex = getMissing(cheapestBrew, me).stream().filter(bestRupeeSteps::containsKey).findFirst();
+        if(!missingIndex.isPresent()){
+            return new Wait();
+        }
+        return bestRupeeSteps.get(missingIndex.get()).getSteps().get(0);
     }
 
     private List<Integer> getMissing(Component brew, PlayerInventory me) {
@@ -420,12 +436,12 @@ class ComponentBuilder {
 }
 
 class WeighCalculator {
-    public Map<Integer, Route> calculateSteps(PlayerInventory me, List<Component> casts) {
+    public Map<Integer, Route> calculateSteps(PlayerInventory me, List<Component> casts, Component brew) {
         Map<Integer, Route> rupeeSteps = new HashMap<>();
         for (int i = 0; i < 4; i += 1) {
             try {
                 Route route = new Route(casts, new LinkedList<>(), me);
-                calculateStepsFor(i, route);
+                calculateStepsFor(i, route, brew, brew.getCostFor(i));
                 rupeeSteps.put(i, route);
             } catch (IOException ignored) {
             }
@@ -433,37 +449,39 @@ class WeighCalculator {
         return rupeeSteps;
     }
 
-    void calculateStepsFor(int index, Route currentRoute) throws IOException {
+    void calculateStepsFor(int index, Route currentRoute, Component brew, int debitsCount) throws IOException {
 
-        if(currentRoute.getMe().getNumberOf(index)>0){
+        if (currentRoute.getMe().getNumberOf(index) >= Math.abs(debitsCount)) {
             return;
         }
-
-        List<Component> castsWithColor = getCastWith(index, currentRoute.getCasts());
-        if (castsWithColor.isEmpty()) {
-            throw new IOException("No color present" + index);
+        while (currentRoute.getMe().getNumberOf(index) < Math.abs(debitsCount)) {
+            List<Component> castsWithColor = getCastWith(index, currentRoute.getCasts());
+            if (castsWithColor.isEmpty()) {
+                throw new IOException("No color present" + index);
+            }
+            Route minCastRoute = null;
+            for (Component castWithColor : castsWithColor) {
+                minCastRoute = calculateBestLeaf(currentRoute, minCastRoute, castWithColor, brew);
+            }
+            currentRoute.updateCasts(minCastRoute.getCasts());
+            currentRoute.updateSteps(minCastRoute.getSteps());
+            currentRoute.updateInventory(minCastRoute.getMe());
         }
-
-        Route minCastRoute = null;
-        for (Component castWithColor : castsWithColor) {
-            minCastRoute = calculateBestLeaf(currentRoute, minCastRoute, castWithColor);
-        }
-        currentRoute.updateCasts(minCastRoute.getCasts());
-        currentRoute.updateSteps(minCastRoute.getSteps());
     }
 
-    private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor) throws IOException {
+    private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor, Component brew) throws
+            IOException {
         Route leafRoute = currentRoute.clone();
         Component leafCastWithColor = leafRoute.getCast(String.valueOf(castWithColor.actionId));
         for (RupeesIndexer rupee : RupeesIndexer.values()) {
-            executeCartsFor(leafRoute, leafCastWithColor, rupee.getIndex());
+            executeCastsFor(leafRoute, leafCastWithColor, rupee.getIndex(), brew);
         }
         if (!leafCastWithColor.isCastable()) {
             leafRoute.addStep(new Rest());
             leafRoute.getCasts().forEach(cast -> cast.setCastable(true));
-        } else {
-            leafCastWithColor.setCastable(false);
         }
+        leafCastWithColor.setCastable(false);
+        leafRoute.updateInventory(leafCastWithColor);
         leafRoute.addStep(leafCastWithColor);
         if (minCastRoute == null || minCastRoute.getCurrentSteps() > leafRoute.getCurrentSteps()) {
             minCastRoute = leafRoute;
@@ -471,11 +489,12 @@ class WeighCalculator {
         return minCastRoute;
     }
 
-    private void executeCartsFor(Route leafRoute, Component leafCast, int index) throws IOException {
+    private void executeCastsFor(Route leafRoute, Component leafCast, int index, Component brew) throws IOException {
         if (leafCast.getCostFor(index) < 0) {
-            for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
-                calculateStepsFor(index, leafRoute);
-            }
+            int debitsCount = getDebitsCount(leafCast, index);
+//            for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
+            calculateStepsFor(index, leafRoute, brew, debitsCount);
+//            }
         }
     }
 
@@ -552,5 +571,15 @@ class Route implements Cloneable {
 
     public void addStep(Component component) {
         steps.add(component);
+    }
+
+    public void updateInventory(Component leafCastWithColor) {
+        for (RupeesIndexer rupee : RupeesIndexer.values()) {
+            me.update(rupee.getIndex(), leafCastWithColor.getCostFor(rupee.getIndex()));
+        }
+    }
+
+    public void updateInventory(PlayerInventory me) {
+        this.me = me;
     }
 }
