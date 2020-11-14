@@ -27,7 +27,7 @@ class Player {
     }
 }
 
-class PlayerInventory {
+class PlayerInventory implements Cloneable {
 
     public int getBlue() {
         return blue;
@@ -57,6 +57,19 @@ class PlayerInventory {
         this.orange = orange;
         this.yellow = yellow;
         this.score = score;
+    }
+
+    @Override
+    public PlayerInventory clone() {
+        return new PlayerInventory(blue, green, orange, yellow, score);
+    }
+
+    public int getNumberOf(int index) {
+        if (index == RupeesIndexer.BLUE.getIndex()) return this.getBlue();
+        if (index == RupeesIndexer.GREEN.getIndex()) return this.getGreen();
+        if (index == RupeesIndexer.ORANGE.getIndex()) return this.getOrange();
+        if (index == RupeesIndexer.YELLOW.getIndex()) return this.getYellow();
+        return 0;
     }
 }
 
@@ -158,6 +171,10 @@ abstract class Component implements Cloneable {
     public int hashCode() {
         return Objects.hash(actionId, actionType);
     }
+
+    public boolean isRest() {
+        return false;
+    }
 }
 
 class Wait extends Component {
@@ -170,6 +187,11 @@ class Wait extends Component {
     @Override
     public Component clone() {
         return new Wait();
+    }
+
+    @Override
+    public String toString() {
+        return actionType;
     }
 }
 
@@ -193,6 +215,11 @@ class Cast extends Component implements Cloneable {
     @Override
     public Cast clone() {
         return new Cast(super.actionId, super.actionType, super.blueCost, super.greenCost, super.orangeCost, super.yellowCost, super.price, super.tomeIndex, super.taxCount, super.castable, super.repeatable);
+    }
+
+    @Override
+    public String toString() {
+        return actionType + " " + actionId;
     }
 }
 
@@ -238,8 +265,42 @@ class Brew extends Component {
     }
 
     @Override
+    public String toString() {
+        return actionType + " " + actionId;
+    }
+
+    @Override
     public boolean isBrew() {
         return true;
+    }
+}
+
+class Rest extends Component {
+
+    public static String COMPONENT = "REST";
+
+    protected Rest() {
+        super(-1, COMPONENT, 0, 0, 0, 0, 0, 0, 0, false, false);
+    }
+
+    @Override
+    public String getActionType() {
+        return COMPONENT;
+    }
+
+    @Override
+    public Component clone() {
+        return new Rest();
+    }
+
+    @Override
+    public boolean isRest() {
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return actionType;
     }
 }
 
@@ -248,10 +309,36 @@ class Chooser {
     public String getBest(PlayerInventory me, List<Component> brews, List<Component> casts) {
         Component inventoryChoose = new BestBrewChooser().getBest(me, brews);
         if (inventoryChoose.getActionType().equals(Brew.COMPONENT)) {
-            return Brew.COMPONENT + " " + inventoryChoose.getActionId();
+            return inventoryChoose.toString();
         }
-        Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(casts);
 
+        Component best = new BestCastChooser().getBest(me, brews, casts);
+        return best.toString();
+    }
+
+
+}
+
+class BestBrewChooser {
+    public Component getBest(PlayerInventory me, List<Component> brews) {
+        brews.sort((o1, o2) -> -1 * Integer.compare(o1.getPrice(), o2.getPrice()));
+        for (Component brew : brews) {
+            if (
+                    me.getBlue() + brew.getBlueCost() >= 0 &&
+                            me.getGreen() + brew.getGreenCost() >= 0 &&
+                            me.getOrange() + brew.getOrangeCost() >= 0 &&
+                            me.getYellow() + brew.getYellowCost() >= 0
+            ) {
+                return brew;
+            }
+        }
+        return new Wait();
+    }
+}
+
+class BestCastChooser {
+    public Component getBest(PlayerInventory me, List<Component> brews, List<Component> casts) {
+        Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(me, casts);
         Component cheapestBrew = null;
         Double maxRateScore = null;
         for (Component brew : brews) {
@@ -261,8 +348,33 @@ class Chooser {
                 maxRateScore = rateScore;
             }
         }
+        List<Integer> missing = getMissing(cheapestBrew, me);
+        return rupeeSteps.get(missing.get(0)).getSteps().get(0);
+    }
 
-        return Wait.COMPONENT;
+    private List<Integer> getMissing(Component brew, PlayerInventory me) {
+        int targetBlue = brew.getBlueCost();
+        int targetYellow = brew.getYellowCost();
+        int targetOrange = brew.getOrangeCost();
+        int targetGreen = brew.getGreenCost();
+        List<Integer> missingIndex = new ArrayList<>();
+        int missingBlue = targetBlue + me.getBlue();
+        if (missingBlue < 0) {
+            missingIndex.add(RupeesIndexer.BLUE.getIndex());
+        }
+        int missingYellow = targetYellow + me.getYellow();
+        if (missingYellow < 0) {
+            missingIndex.add(RupeesIndexer.YELLOW.getIndex());
+        }
+        int missingOrange = targetOrange + me.getOrange();
+        if (missingOrange < 0) {
+            missingIndex.add(RupeesIndexer.ORANGE.getIndex());
+        }
+        int missingGreen = targetGreen + me.getGreen();
+        if (missingGreen < 0) {
+            missingIndex.add(RupeesIndexer.GREEN.getIndex());
+        }
+        return missingIndex;
     }
 
     public double calculateRateScore(PlayerInventory me, Component brew, Map<Integer, Route> rupeeMandatorySteps) {
@@ -284,28 +396,11 @@ class Chooser {
         ) {
             return 0;
         }
-        return (1D * price) / (rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue +
-                rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen +
-                rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange +
-                rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow);
-    }
-
-}
-
-class BestBrewChooser {
-    public Component getBest(PlayerInventory me, List<Component> brews) {
-        brews.sort((o1, o2) -> -1 * Integer.compare(o1.getPrice(), o2.getPrice()));
-        for (Component brew : brews) {
-            if (
-                    me.getBlue() + brew.getBlueCost() >= 0 &&
-                            me.getGreen() + brew.getGreenCost() >= 0 &&
-                            me.getOrange() + brew.getOrangeCost() >= 0 &&
-                            me.getYellow() + brew.getYellowCost() >= 0
-            ) {
-                return brew;
-            }
-        }
-        return new Wait();
+        return (1D * price) /
+                (rupeeMandatorySteps.containsKey(0) ? rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue : 0) +
+                (rupeeMandatorySteps.containsKey(1) ? rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen : 0) +
+                (rupeeMandatorySteps.containsKey(2) ? rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange : 0) +
+                (rupeeMandatorySteps.containsKey(3) ? rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow : 0);
     }
 }
 
@@ -325,11 +420,11 @@ class ComponentBuilder {
 }
 
 class WeighCalculator {
-    public Map<Integer, Route> calculateSteps(List<Component> casts) {
+    public Map<Integer, Route> calculateSteps(PlayerInventory me, List<Component> casts) {
         Map<Integer, Route> rupeeSteps = new HashMap<>();
         for (int i = 0; i < 4; i += 1) {
             try {
-                Route route = new Route(0, casts);
+                Route route = new Route(casts, new LinkedList<>(), me);
                 calculateStepsFor(i, route);
                 rupeeSteps.put(i, route);
             } catch (IOException ignored) {
@@ -339,6 +434,10 @@ class WeighCalculator {
     }
 
     void calculateStepsFor(int index, Route currentRoute) throws IOException {
+
+        if(currentRoute.getMe().getNumberOf(index)>0){
+            return;
+        }
 
         List<Component> castsWithColor = getCastWith(index, currentRoute.getCasts());
         if (castsWithColor.isEmpty()) {
@@ -350,7 +449,7 @@ class WeighCalculator {
             minCastRoute = calculateBestLeaf(currentRoute, minCastRoute, castWithColor);
         }
         currentRoute.updateCasts(minCastRoute.getCasts());
-        currentRoute.updateCurrentSteps(minCastRoute.getCurrentSteps());
+        currentRoute.updateSteps(minCastRoute.getSteps());
     }
 
     private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor) throws IOException {
@@ -360,12 +459,12 @@ class WeighCalculator {
             executeCartsFor(leafRoute, leafCastWithColor, rupee.getIndex());
         }
         if (!leafCastWithColor.isCastable()) {
-            leafRoute.increaseSteps();
+            leafRoute.addStep(new Rest());
             leafRoute.getCasts().forEach(cast -> cast.setCastable(true));
         } else {
             leafCastWithColor.setCastable(false);
         }
-        leafRoute.increaseSteps();
+        leafRoute.addStep(leafCastWithColor);
         if (minCastRoute == null || minCastRoute.getCurrentSteps() > leafRoute.getCurrentSteps()) {
             minCastRoute = leafRoute;
         }
@@ -376,7 +475,6 @@ class WeighCalculator {
         if (leafCast.getCostFor(index) < 0) {
             for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
                 calculateStepsFor(index, leafRoute);
-                String a = "";
             }
         }
     }
@@ -408,25 +506,32 @@ enum RupeesIndexer {
 }
 
 class Route implements Cloneable {
-    private int currentSteps;
     private List<Component> casts;
+    private List<Component> steps;
 
-    Route(int currentSteps, List<Component> casts) {
+    public PlayerInventory getMe() {
+        return me;
+    }
+
+    private PlayerInventory me;
+
+    Route(List<Component> casts, List<Component> steps, PlayerInventory me) {
         this.casts = casts.stream().map(Component::clone).collect(Collectors.toList());
-        this.currentSteps = currentSteps;
+        this.steps = steps;
+        this.me = me.clone();
     }
 
     @Override
     public Route clone() {
-        return new Route(currentSteps, casts.stream().map(Component::clone).collect(Collectors.toList()));
-    }
-
-    public void updateCurrentSteps(int newCurrentSteps) {
-        this.currentSteps = newCurrentSteps;
+        return new Route(casts.stream().map(Component::clone).collect(Collectors.toList()), steps.stream().map(Component::clone).collect(Collectors.toList()), me);
     }
 
     public void updateCasts(List<Component> newCasts) {
-        Collections.copy(casts, newCasts);
+        casts = newCasts;
+    }
+
+    public void updateSteps(List<Component> newSteps) {
+        steps = newSteps;
     }
 
     public List<Component> getCasts() {
@@ -437,12 +542,15 @@ class Route implements Cloneable {
         return casts.stream().filter(component -> component.getActionId().equals(String.valueOf(ActionId))).findFirst().get();
     }
 
-    public void increaseSteps() {
-        currentSteps++;
-    }
-
     public int getCurrentSteps() {
-        return currentSteps;
+        return steps.size();
     }
 
+    public List<Component> getSteps() {
+        return steps;
+    }
+
+    public void addStep(Component component) {
+        steps.add(component);
+    }
 }

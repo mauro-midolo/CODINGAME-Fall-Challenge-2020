@@ -2,6 +2,7 @@ import org.junit.Test;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -17,7 +18,7 @@ public class WeighCalculatorTest {
                 new Cast(15, "CAST", -1, 0, +1, 0, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0,casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
                 new WeighCalculator().calculateStepsFor(2, route);
         assertEquals(3, route.getCurrentSteps());
     }
@@ -30,7 +31,7 @@ public class WeighCalculatorTest {
                 new Cast(15, "CAST", -1, 0, +1, 0, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0, casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
         new WeighCalculator().calculateStepsFor(2, route);
         assertEquals(3, route.getCurrentSteps());
     }
@@ -42,7 +43,7 @@ public class WeighCalculatorTest {
                new Cast(10, "CAST", -2, +1, 0, 0, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0, casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
         new WeighCalculator().calculateStepsFor(1, route);
         assertEquals(4, route.getCurrentSteps());
     }
@@ -57,7 +58,7 @@ public class WeighCalculatorTest {
                 new Cast(13, "CAST", 0, 0, 0, +1, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0, casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
         new WeighCalculator().calculateStepsFor(RupeesIndexer.BLUE.getIndex(), route);
         assertEquals(6, route.getCurrentSteps());
     }
@@ -70,7 +71,7 @@ public class WeighCalculatorTest {
                 new Cast(11, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0, casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
         new WeighCalculator().calculateStepsFor(RupeesIndexer.BLUE.getIndex(), route);
         assertEquals(1, route.getCurrentSteps());
     }
@@ -83,7 +84,7 @@ public class WeighCalculatorTest {
                 new Cast(12, "CAST", 0, -2, +1, 0, 0, 0, 0, true, false)
         );
 
-        Route route = new Route(0, casts);
+        Route route = new Route(casts, new LinkedList<>(), new PlayerInventory(0,0,0,0,0));
         new WeighCalculator().calculateStepsFor(RupeesIndexer.ORANGE.getIndex(), route);
         assertEquals(6, route.getCurrentSteps());
     }
@@ -96,7 +97,7 @@ public class WeighCalculatorTest {
                 new Cast(12, "CAST", 0, -2, +1, 0, 0, 0, 0, true, false)
         );
 
-        Map<Integer, Route> resultSteps = new WeighCalculator().calculateSteps(casts);
+        Map<Integer, Route> resultSteps = new WeighCalculator().calculateSteps(new PlayerInventory(0,0,0,0,0), casts);
         assertEquals(1, resultSteps.get(RupeesIndexer.BLUE.getIndex()).getCurrentSteps());
         assertEquals(2, resultSteps.get(RupeesIndexer.GREEN.getIndex()).getCurrentSteps());
         assertEquals(6, resultSteps.get(RupeesIndexer.ORANGE.getIndex()).getCurrentSteps());
