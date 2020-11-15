@@ -412,7 +412,7 @@ class BestBrewChooser {
 
 class BestCastChooser {
 
-    public static final double OPPOSITE_SCORE_WEIGTH = 0.5D;
+    public static final double OPPOSITE_SCORE_WEIGHT = 0.5D;
 
     public ComponentResult getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
 
@@ -449,7 +449,7 @@ class BestCastChooser {
     }
 
     public double calculateRateScore(Component brew, Route brewStepRoute, Route oppositeBrewStepRoute) {
-        return calculateRateScoreForOnePlayer(brew, brewStepRoute) - (calculateRateScoreForOnePlayer(brew, oppositeBrewStepRoute) * OPPOSITE_SCORE_WEIGTH);
+        return calculateRateScoreForOnePlayer(brew, brewStepRoute) - (calculateRateScoreForOnePlayer(brew, oppositeBrewStepRoute) * OPPOSITE_SCORE_WEIGHT);
     }
 
     private double calculateRateScoreForOnePlayer(Component brew, Route brewStepRoute) {
