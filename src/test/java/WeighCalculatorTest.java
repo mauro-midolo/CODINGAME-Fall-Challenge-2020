@@ -93,4 +93,20 @@ public class WeighCalculatorTest {
         new WeighCalculator().calculateStepsFor(2, route, brew, brew.getCostFor(2));
         assertEquals(6, route.getCurrentSteps());
     }
+
+    @Test
+    public void shouldCalculateSteps() throws CodingGameException {
+        Component brew = new Brew(1, "BREW", -1, -1, -1, 0, 10, 0, 0, false, false);
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(1, "CAST", -1, +1, 0, 0, 0, 0, 0, true, false),
+                new Cast(1, "CAST", -1, -1, +1, 0, 0, 0, 0, true, false)
+        );
+
+
+        PlayerInventory me = new PlayerInventory(0, 0, 0, 0, 0);
+
+        Route route = new WeighCalculator().calculateSteps(me, casts, brew);
+        assertEquals(19, route.getCurrentSteps());
+    }
 }

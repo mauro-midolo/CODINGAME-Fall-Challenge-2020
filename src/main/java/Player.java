@@ -410,8 +410,7 @@ class WeighCalculator {
         for (RupeesIndexer rupeesIndexer : RupeesIndexer.values()) {
             try {
                 calculateStepsFor(rupeesIndexer.getIndex(), route, brew, brew.getCostFor(rupeesIndexer.getIndex()));
-            } catch (CodingGameException ignored) {
-            }
+            } catch (CodingGameException ignored) { }
         }
         return route;
     }
@@ -505,6 +504,10 @@ class Route implements Cloneable {
     }
 
     private PlayerInventory me;
+    private int blockBlue= 0;
+    private int blockYellow= 0;
+    private int blockGreen= 0;
+    private int blockOrange= 0;
 
     Route(List<Component> casts, List<Component> steps, PlayerInventory me) {
         this.casts = casts.stream().map(Component::clone).collect(Collectors.toList());
