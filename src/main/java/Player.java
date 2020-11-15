@@ -18,6 +18,7 @@ class Player {
             List<Component> brews = components.stream().filter(Component::isBrew).collect(Collectors.toList());
             List<Component> casts = components.stream().filter(Component::isCast).collect(Collectors.toList());
             List<Component> oppositeCasts = components.stream().filter(Component::isOpponentCast).collect(Collectors.toList());
+            List<Component> learn = components.stream().filter(Component::isLearn).collect(Collectors.toList());
             PlayerInventory me = new PlayerInventory(in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt());
             PlayerInventory theOther = new PlayerInventory(in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt());
             String choose = new Chooser().getBest(me, theOther, brews, casts, oppositeCasts);
@@ -115,6 +116,10 @@ abstract class Component implements Cloneable {
         this.castable = castable;
     }
 
+    public boolean isLearn(){
+        return false;
+    };
+
     public abstract Component clone();
 
     boolean isBrew() {
@@ -202,8 +207,7 @@ class Wait extends Component {
     }
 }
 
-class
-Cast extends Component implements Cloneable {
+class Cast extends Component implements Cloneable {
     public static String COMPONENT = "CAST";
 
     public Cast(int actionId, String actionType, int blueCost, int greenCost, int orangeCost, int yellowCost, int price, int tomeIndex, int taxCount, boolean castable, boolean repeatable) {
@@ -230,6 +234,35 @@ Cast extends Component implements Cloneable {
         return actionType + " " + actionId;
     }
 }
+
+class Learn extends Component implements Cloneable {
+    public static String COMPONENT = "LEARN";
+
+    public Learn(int actionId, String actionType, int blueCost, int greenCost, int orangeCost, int yellowCost, int price, int tomeIndex, int taxCount, boolean castable, boolean repeatable) {
+        super(actionId, actionType, blueCost, greenCost, orangeCost, yellowCost, price, tomeIndex, taxCount, castable, repeatable);
+    }
+
+    @Override
+    String getActionType() {
+        return COMPONENT;
+    }
+
+    @Override
+    public boolean isLearn() {
+        return true;
+    }
+
+    @Override
+    public Learn clone() {
+        return new Learn(super.actionId, super.actionType, super.blueCost, super.greenCost, super.orangeCost, super.yellowCost, super.price, super.tomeIndex, super.taxCount, super.castable, super.repeatable);
+    }
+
+    @Override
+    public String toString() {
+        return actionType + " " + actionId;
+    }
+}
+
 
 class OpponentCast extends Cast {
     public static String COMPONENT = "OPPONENT_CAST";
@@ -504,10 +537,10 @@ class Route implements Cloneable {
     }
 
     private PlayerInventory me;
-    private int blockBlue= 0;
-    private int blockYellow= 0;
-    private int blockGreen= 0;
-    private int blockOrange= 0;
+    private int blockBlue = 0;
+    private int blockYellow = 0;
+    private int blockGreen = 0;
+    private int blockOrange = 0;
 
     Route(List<Component> casts, List<Component> steps, PlayerInventory me) {
         this.casts = casts.stream().map(Component::clone).collect(Collectors.toList());
