@@ -362,7 +362,7 @@ class BestCastChooser {
             }
         }
         Optional<Integer> missingIndex = getMissing(cheapestBrew, me).stream().filter(bestRupeeSteps::containsKey).findFirst();
-        if(!missingIndex.isPresent()){
+        if (!missingIndex.isPresent()) {
             return new Wait();
         }
         return bestRupeeSteps.get(missingIndex.get()).getSteps().get(0);
@@ -401,10 +401,10 @@ class BestCastChooser {
         int price = brew.getPrice();
 
 
-        int missingBlue = Math.abs(targetBlue + me.getBlue());
-        int missingYellow = Math.abs(targetYellow + me.getYellow());
-        int missingOrange = Math.abs(targetOrange + me.getOrange());
-        int missingGreen = Math.abs(targetGreen + me.getGreen());
+        int missingBlue = targetBlue + me.getBlue() < 0 ? Math.abs(targetBlue + me.getBlue()) : 0;
+        int missingYellow = targetYellow + me.getYellow() < 0 ? Math.abs(targetYellow + me.getYellow()) : 0;
+        int missingOrange = targetOrange + me.getOrange() < 0 ? Math.abs(targetOrange + me.getOrange()) : 0;
+        int missingGreen = targetGreen + me.getGreen() < 0 ? Math.abs(targetGreen + me.getGreen()) : 0;
         if ((missingBlue > 0 && !rupeeMandatorySteps.containsKey(0)) ||
                 (missingBlue > 1 && !rupeeMandatorySteps.containsKey(1)) ||
                 (missingBlue > 2 && !rupeeMandatorySteps.containsKey(2)) ||
@@ -413,10 +413,10 @@ class BestCastChooser {
             return 0;
         }
         return (1D * price) /
-                (rupeeMandatorySteps.containsKey(0) ? rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue : 0) +
-                (rupeeMandatorySteps.containsKey(1) ? rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen : 0) +
-                (rupeeMandatorySteps.containsKey(2) ? rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange : 0) +
-                (rupeeMandatorySteps.containsKey(3) ? rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow : 0);
+                1D * (rupeeMandatorySteps.containsKey(0) ? rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue : 0) +
+                1D * (rupeeMandatorySteps.containsKey(1) ? rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen : 0) +
+                1D * (rupeeMandatorySteps.containsKey(2) ? rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange : 0) +
+                1D * (rupeeMandatorySteps.containsKey(3) ? rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow : 0);
     }
 }
 
@@ -443,13 +443,12 @@ class WeighCalculator {
                 Route route = new Route(casts, new LinkedList<>(), me);
                 calculateStepsFor(i, route, brew, brew.getCostFor(i));
                 rupeeSteps.put(i, route);
-            } catch (IOException ignored) {
-            }
+            } catch (CodingGameException ignored) {}
         }
         return rupeeSteps;
     }
 
-    void calculateStepsFor(int index, Route currentRoute, Component brew, int debitsCount) throws IOException {
+    void calculateStepsFor(int index, Route currentRoute, Component brew, int debitsCount) throws CodingGameException {
 
         if (currentRoute.getMe().getNumberOf(index) >= Math.abs(debitsCount)) {
             return;
@@ -457,7 +456,7 @@ class WeighCalculator {
         while (currentRoute.getMe().getNumberOf(index) < Math.abs(debitsCount)) {
             List<Component> castsWithColor = getCastWith(index, currentRoute.getCasts());
             if (castsWithColor.isEmpty()) {
-                throw new IOException("No color present" + index);
+                throw new NoCastAvailableException("No color present" + index);
             }
             Route minCastRoute = null;
             for (Component castWithColor : castsWithColor) {
@@ -470,7 +469,7 @@ class WeighCalculator {
     }
 
     private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor, Component brew) throws
-            IOException {
+            CodingGameException {
         Route leafRoute = currentRoute.clone();
         Component leafCastWithColor = leafRoute.getCast(String.valueOf(castWithColor.actionId));
         for (RupeesIndexer rupee : RupeesIndexer.values()) {
@@ -489,7 +488,7 @@ class WeighCalculator {
         return minCastRoute;
     }
 
-    private void executeCastsFor(Route leafRoute, Component leafCast, int index, Component brew) throws IOException {
+    private void executeCastsFor(Route leafRoute, Component leafCast, int index, Component brew) throws CodingGameException {
         if (leafCast.getCostFor(index) < 0) {
             int debitsCount = getDebitsCount(leafCast, index);
 //            for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
@@ -527,6 +526,7 @@ enum RupeesIndexer {
 class Route implements Cloneable {
     private List<Component> casts;
     private List<Component> steps;
+    private static Integer MAX_INVENTORY_SLOTS = 10;
 
     public PlayerInventory getMe() {
         return me;
@@ -573,13 +573,35 @@ class Route implements Cloneable {
         steps.add(component);
     }
 
-    public void updateInventory(Component leafCastWithColor) {
+    public void updateInventory(Component leafCastWithColor) throws InventorySpaceExceededException {
         for (RupeesIndexer rupee : RupeesIndexer.values()) {
             me.update(rupee.getIndex(), leafCastWithColor.getCostFor(rupee.getIndex()));
+        }
+        Integer count = Arrays.stream(RupeesIndexer.values()).map(rupeesIndexer -> me.getNumberOf(rupeesIndexer.getIndex())).reduce(0, Integer::sum);
+        if(count > MAX_INVENTORY_SLOTS){
+            throw new InventorySpaceExceededException("Too much item into inventory");
         }
     }
 
     public void updateInventory(PlayerInventory me) {
         this.me = me;
+    }
+}
+
+class CodingGameException extends Exception {
+    public CodingGameException(String message) {
+        super(message);
+    }
+}
+
+class InventorySpaceExceededException extends CodingGameException {
+    public InventorySpaceExceededException(String message) {
+        super(message);
+    }
+}
+
+class NoCastAvailableException extends CodingGameException {
+    public NoCastAvailableException(String message) {
+        super(message);
     }
 }

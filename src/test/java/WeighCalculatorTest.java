@@ -8,7 +8,7 @@ import static org.junit.Assert.*;
 public class WeighCalculatorTest {
 
     @Test
-    public void shouldCalculateNumberOfSteps() throws IOException {
+    public void shouldCalculateNumberOfSteps() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", 0, +1, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", +2, -1, 0, 0, 0, 0, 0, true, false),
@@ -24,7 +24,7 @@ public class WeighCalculatorTest {
     }
 
     @Test
-    public void shouldCalculateNumberOfStep2s() throws IOException {
+    public void shouldCalculateNumberOfStep2s() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", 0, +1, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", +2, -1, 0, 0, 0, 0, 0, true, false),
@@ -38,7 +38,7 @@ public class WeighCalculatorTest {
     }
 
     @Test
-    public void shouldCalculateNumberOfSteps3() throws IOException {
+    public void shouldCalculateNumberOfSteps3() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", -2, +1, 0, 0, 0, 0, 0, true, false)
@@ -51,7 +51,7 @@ public class WeighCalculatorTest {
     }
 
     @Test
-    public void shouldCalculateNumberOfStepsButMinimum() throws IOException {
+    public void shouldCalculateNumberOfStepsButMinimum() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", +1, -2, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", 0, +1, -2, 0, 0, 0, 0, true, false),
@@ -67,7 +67,7 @@ public class WeighCalculatorTest {
     }
 
     @Test
-    public void shouldCalculateNumberOfStepsButMinimumComplex() throws IOException {
+    public void shouldCalculateNumberOfStepsButMinimumComplex() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", +1, -1, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", 0, +1, 0, 0, 0, 0, 0, true, false),
@@ -81,7 +81,7 @@ public class WeighCalculatorTest {
     }
 
     @Test
-    public void shouldCalculateNumberOfSteps4() throws IOException {
+    public void shouldCalculateNumberOfSteps4() throws CodingGameException {
         List<Component> casts = Arrays.asList(
                 new Cast(1, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false),
                 new Cast(10, "CAST", -1, +1, 0, 0, 0, 0, 0, true, false),
