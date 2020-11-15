@@ -10,7 +10,7 @@ class Player {
 
         // game loop
         while (true) {
-            int actionCount = in.nextInt(); // the number of spells and recipes in play
+            int actionCount = in.nextInt();
             List<Component> components = new ArrayList<>();
             for (int i = 0; i < actionCount; i++) {
                 components.add(ComponentBuilder.build(in.nextInt(), in.next(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt() != 0, in.nextInt() != 0));
@@ -78,6 +78,10 @@ class PlayerInventory implements Cloneable {
         if (index == RupeesIndexer.GREEN.getIndex()) green += deltaValue;
         if (index == RupeesIndexer.ORANGE.getIndex()) orange += deltaValue;
         if (index == RupeesIndexer.YELLOW.getIndex()) yellow += deltaValue;
+    }
+
+    public int getScore() {
+        return score;
     }
 }
 
@@ -415,11 +419,11 @@ class BestCastChooser {
     public static final double OPPOSITE_SCORE_WEIGHT = 0.5D;
 
     public ComponentResult getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
-
+        List<Component> brewsToUse = filterBrewBaseScore(me, oppositeInventory, brews);
         Component cheapestBrew = null;
         Double maxRateScore = null;
         Route bestRupeeSteps = null;
-        for (Component brew : brews) {
+        for (Component brew : brewsToUse) {
             Route brewSteps = new WeighCalculator().calculateSteps(me, casts, brew);
             if (notStepsAvailable(brewSteps)) {
                 continue;
@@ -442,6 +446,17 @@ class BestCastChooser {
             return new ComponentResult(component, count);
         }
         return new ComponentResult(component);
+    }
+
+    private List<Component> filterBrewBaseScore(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews) {
+        int diffWithOther = oppositeInventory.getScore() - me.getScore();
+        if (diffWithOther > 0) {
+            List<Component> brewFiltered = brews.stream().filter(component -> component.getPrice() >= diffWithOther).collect(Collectors.toList());
+            if(brewFiltered.size() > 0){
+                return brewFiltered;
+            }
+        }
+        return brews;
     }
 
     private boolean notStepsAvailable(Route route) {
@@ -480,13 +495,13 @@ class ComponentBuilder {
 class WeighCalculator {
     public Route calculateSteps(PlayerInventory me, List<Component> casts, Component brew) {
         Route route = new Route(casts, new LinkedList<>(), me);
-        boolean findRoute= true;
+        boolean findRoute = true;
         while (notHaveAll(brew, route.getMe()) && findRoute)
             for (RupeesIndexer rupeesIndexer : RupeesIndexer.values()) {
                 try {
                     calculateStepsFor(rupeesIndexer.getIndex(), route, brew, brew.getCostFor(rupeesIndexer.getIndex()));
                 } catch (CodingGameException ignored) {
-                    findRoute= false;
+                    findRoute = false;
                 }
             }
         return route;
@@ -494,9 +509,10 @@ class WeighCalculator {
 
     private boolean notHaveAll(Component brew, PlayerInventory me) {
         for (RupeesIndexer value : RupeesIndexer.values()) {
-            if (brew.getCostFor(value.getIndex()) + me.getNumberOf(value.getIndex()) < 0){
+            if (brew.getCostFor(value.getIndex()) + me.getNumberOf(value.getIndex()) < 0) {
                 return true;
-            };
+            }
+            ;
         }
         return false;
     }
