@@ -433,6 +433,9 @@ class ComponentBuilder {
         if (OpponentCast.COMPONENT.equals(actionType)) {
             return new OpponentCast(actionId, actionType, blueCost, greenCost, orangeCost, yellowCost, price, tomeIndex, taxCount, castable, repeatable);
         }
+        if (Learn.COMPONENT.equals(actionType)) {
+            return new Learn(actionId, actionType, blueCost, greenCost, orangeCost, yellowCost, price, tomeIndex, taxCount, castable, repeatable);
+        }
         return new Wait();
     }
 }
