@@ -163,4 +163,5 @@ public class ChooserTest {
         String choose = new Chooser().getBest(me, other, brews, casts, casts);
         assertTrue(choose + " is not contains", Arrays.asList("CAST 2", "CAST 3").contains(choose));
     }
+
 }
