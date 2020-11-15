@@ -165,6 +165,10 @@ abstract class Component implements Cloneable {
         return castable;
     }
 
+    public boolean isRest() {
+        return false;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -177,10 +181,6 @@ abstract class Component implements Cloneable {
     @Override
     public int hashCode() {
         return Objects.hash(actionId, actionType);
-    }
-
-    public boolean isRest() {
-        return false;
     }
 }
 
@@ -378,31 +378,6 @@ class BestCastChooser {
         return route.getCurrentSteps() == 0;
     }
 
-    private List<Integer> getMissing(Component brew, PlayerInventory me) {
-        int targetBlue = brew.getBlueCost();
-        int targetYellow = brew.getYellowCost();
-        int targetOrange = brew.getOrangeCost();
-        int targetGreen = brew.getGreenCost();
-        List<Integer> missingIndex = new ArrayList<>();
-        int missingBlue = targetBlue + me.getBlue();
-        if (missingBlue < 0) {
-            missingIndex.add(RupeesIndexer.BLUE.getIndex());
-        }
-        int missingYellow = targetYellow + me.getYellow();
-        if (missingYellow < 0) {
-            missingIndex.add(RupeesIndexer.YELLOW.getIndex());
-        }
-        int missingOrange = targetOrange + me.getOrange();
-        if (missingOrange < 0) {
-            missingIndex.add(RupeesIndexer.ORANGE.getIndex());
-        }
-        int missingGreen = targetGreen + me.getGreen();
-        if (missingGreen < 0) {
-            missingIndex.add(RupeesIndexer.GREEN.getIndex());
-        }
-        return missingIndex;
-    }
-
     public double calculateRateScore(Component brew, Route brewStepRoute, Route oppositeBrewStepRoute) {
         return calculateRateScoreForOnePlayer(brew, brewStepRoute) - (calculateRateScoreForOnePlayer(brew, oppositeBrewStepRoute) * OPPOSITE_SCORE_WEIGTH);
     }
@@ -490,9 +465,7 @@ class WeighCalculator {
     private void executeCastsFor(Route leafRoute, Component leafCast, int index, Component brew) throws CodingGameException {
         if (leafCast.getCostFor(index) < 0) {
             int debitsCount = getDebitsCount(leafCast, index);
-//            for (int i = 0; i < getDebitsCount(leafCast, index); i += 1) {
             calculateStepsFor(index, leafRoute, brew, debitsCount);
-//            }
         }
     }
 
