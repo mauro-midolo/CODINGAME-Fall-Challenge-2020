@@ -83,4 +83,18 @@ public class ChooserTest {
         assertEquals("CAST 2", choose);
     }
 
+    @Test
+    public void shouldExcludeACastIfNotAvailableSpaceInInventory2() {
+        PlayerInventory me = new PlayerInventory(0, 0, 0, 8, 0);
+        List<Component> brews = Arrays.asList(
+                new Brew(1, "BREW", -2, 0, 0, 0, 10, 0, 0, false, false)
+        );
+
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +3, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(2, "CAST", +1, 0, 0, 0, 0, 0, 0, true, false)
+        );
+        String choose = new Chooser().getBest(me, brews, casts);
+        assertEquals("CAST 2", choose);
+    }
 }

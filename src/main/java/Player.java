@@ -462,14 +462,16 @@ class WeighCalculator {
             for (Component castWithColor : castsWithColor) {
                 minCastRoute = calculateBestLeaf(currentRoute, minCastRoute, castWithColor, brew);
             }
+            if(minCastRoute == null){
+                throw new NoRouteFoundException("");
+            }
             currentRoute.updateCasts(minCastRoute.getCasts());
             currentRoute.updateSteps(minCastRoute.getSteps());
             currentRoute.updateInventory(minCastRoute.getMe());
         }
     }
 
-    private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor, Component brew) throws
-            CodingGameException {
+    private Route calculateBestLeaf(Route currentRoute, Route minCastRoute, Component castWithColor, Component brew) throws CodingGameException {
         Route leafRoute = currentRoute.clone();
         Component leafCastWithColor = leafRoute.getCast(String.valueOf(castWithColor.actionId));
         for (RupeesIndexer rupee : RupeesIndexer.values()) {
@@ -480,7 +482,11 @@ class WeighCalculator {
             leafRoute.getCasts().forEach(cast -> cast.setCastable(true));
         }
         leafCastWithColor.setCastable(false);
-        leafRoute.updateInventory(leafCastWithColor);
+        try {
+            leafRoute.updateInventory(leafCastWithColor);
+        } catch (InventorySpaceExceededException e) {
+            return minCastRoute;
+        }
         leafRoute.addStep(leafCastWithColor);
         if (minCastRoute == null || minCastRoute.getCurrentSteps() > leafRoute.getCurrentSteps()) {
             minCastRoute = leafRoute;
@@ -602,6 +608,12 @@ class InventorySpaceExceededException extends CodingGameException {
 
 class NoCastAvailableException extends CodingGameException {
     public NoCastAvailableException(String message) {
+        super(message);
+    }
+}
+
+class NoRouteFoundException extends CodingGameException {
+    public NoRouteFoundException(String message) {
         super(message);
     }
 }
