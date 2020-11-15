@@ -1,4 +1,3 @@
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -18,9 +17,10 @@ class Player {
             }
             List<Component> brews = components.stream().filter(Component::isBrew).collect(Collectors.toList());
             List<Component> casts = components.stream().filter(Component::isCast).collect(Collectors.toList());
+            List<Component> oppositeCasts = components.stream().filter(Component::isOpponentCast).collect(Collectors.toList());
             PlayerInventory me = new PlayerInventory(in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt());
             PlayerInventory theOther = new PlayerInventory(in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt(), in.nextInt());
-            String choose = new Chooser().getBest(me, brews, casts);
+            String choose = new Chooser().getBest(me, theOther, brews, casts, oppositeCasts);
             // in the first league: BREW <id> | WAIT; later: BREW <id> | CAST <id> [<times>] | LEARN <id> | REST | WAIT
             System.out.println(choose);
         }
@@ -314,7 +314,7 @@ class Rest extends Component {
 
 class Chooser {
 
-    public String getBest(PlayerInventory me, List<Component> brews, List<Component> casts) {
+    public String getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
         Component inventoryChoose = new BestBrewChooser().getBest(me, brews);
         if (inventoryChoose.getActionType().equals(Brew.COMPONENT)) {
             return inventoryChoose.toString();
@@ -322,7 +322,7 @@ class Chooser {
         if (casts.size() == 0) {
             return inventoryChoose.toString();
         }
-        Component best = new BestCastChooser().getBest(me, brews, casts);
+        Component best = new BestCastChooser().getBest(me, oppositeInventory,brews, casts, oppositeCasts);
         return best.toString();
     }
 
@@ -347,25 +347,50 @@ class BestBrewChooser {
 }
 
 class BestCastChooser {
-    public Component getBest(PlayerInventory me, List<Component> brews, List<Component> casts) {
+
+    public static final double OPPOSITE_SCORE_WEIGTH = 0.5D;
+
+    public Component getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
 
         Component cheapestBrew = null;
         Double maxRateScore = null;
         Map<Integer, Route> bestRupeeSteps = null;
         for (Component brew : brews) {
             Map<Integer, Route> rupeeSteps = new WeighCalculator().calculateSteps(me, casts, brew);
-            double rateScore = calculateRateScore(me, brew, rupeeSteps);
+            if(notStepsAvailable(rupeeSteps, brew, me)){
+                continue;
+            }
+            Map<Integer, Route> oppositeRupeeSteps = new WeighCalculator().calculateSteps(oppositeInventory, oppositeCasts, brew);
+            double rateScore = calculateRateScore(me, oppositeInventory,brew, rupeeSteps, oppositeRupeeSteps);
             if (cheapestBrew == null || rateScore > maxRateScore) {
                 cheapestBrew = brew;
                 maxRateScore = rateScore;
                 bestRupeeSteps = rupeeSteps;
             }
         }
+        if(cheapestBrew == null){
+            return new Wait();
+        }
         Optional<Integer> missingIndex = getMissing(cheapestBrew, me).stream().filter(bestRupeeSteps::containsKey).findFirst();
         if (!missingIndex.isPresent()) {
             return new Wait();
         }
         return bestRupeeSteps.get(missingIndex.get()).getSteps().get(0);
+    }
+
+    private boolean notStepsAvailable(Map<Integer, Route> rupeeSteps, Component brew, PlayerInventory me) {
+        int targetBlue = brew.getBlueCost();
+        int targetYellow = brew.getYellowCost();
+        int targetOrange = brew.getOrangeCost();
+        int targetGreen = brew.getGreenCost();
+        int missingBlue = targetBlue + me.getBlue() < 0 ? Math.abs(targetBlue + me.getBlue()) : 0;
+        int missingYellow = targetYellow + me.getYellow() < 0 ? Math.abs(targetYellow + me.getYellow()) : 0;
+        int missingOrange = targetOrange + me.getOrange() < 0 ? Math.abs(targetOrange + me.getOrange()) : 0;
+        int missingGreen = targetGreen + me.getGreen() < 0 ? Math.abs(targetGreen + me.getGreen()) : 0;
+        return (missingBlue > 0 && !rupeeSteps.containsKey(0)) ||
+                (missingYellow > 0 && !rupeeSteps.containsKey(1)) ||
+                (missingOrange > 0 && !rupeeSteps.containsKey(2)) ||
+                (missingGreen > 0 && !rupeeSteps.containsKey(3));
     }
 
     private List<Integer> getMissing(Component brew, PlayerInventory me) {
@@ -393,30 +418,17 @@ class BestCastChooser {
         return missingIndex;
     }
 
-    public double calculateRateScore(PlayerInventory me, Component brew, Map<Integer, Route> rupeeMandatorySteps) {
-        int targetBlue = brew.getBlueCost();
-        int targetYellow = brew.getYellowCost();
-        int targetOrange = brew.getOrangeCost();
-        int targetGreen = brew.getGreenCost();
+    public double calculateRateScore(PlayerInventory me, PlayerInventory oppositeInventory, Component brew, Map<Integer, Route> rupeeMandatorySteps, Map<Integer, Route> oppositeRupeeSteps) {
+        return calculateRateScoreForOnePlayer(me, brew, rupeeMandatorySteps) - (calculateRateScoreForOnePlayer(oppositeInventory, brew, oppositeRupeeSteps) * OPPOSITE_SCORE_WEIGTH) ;
+    }
+
+    private double calculateRateScoreForOnePlayer(PlayerInventory me, Component brew, Map<Integer, Route> rupeeMandatorySteps) {
         int price = brew.getPrice();
-
-
-        int missingBlue = targetBlue + me.getBlue() < 0 ? Math.abs(targetBlue + me.getBlue()) : 0;
-        int missingYellow = targetYellow + me.getYellow() < 0 ? Math.abs(targetYellow + me.getYellow()) : 0;
-        int missingOrange = targetOrange + me.getOrange() < 0 ? Math.abs(targetOrange + me.getOrange()) : 0;
-        int missingGreen = targetGreen + me.getGreen() < 0 ? Math.abs(targetGreen + me.getGreen()) : 0;
-        if ((missingBlue > 0 && !rupeeMandatorySteps.containsKey(0)) ||
-                (missingBlue > 1 && !rupeeMandatorySteps.containsKey(1)) ||
-                (missingBlue > 2 && !rupeeMandatorySteps.containsKey(2)) ||
-                (missingBlue > 3 && !rupeeMandatorySteps.containsKey(3))
-        ) {
-            return 0;
-        }
         return (1D * price) /
-                1D * (rupeeMandatorySteps.containsKey(0) ? rupeeMandatorySteps.get(0).getCurrentSteps() * missingBlue : 0) +
-                1D * (rupeeMandatorySteps.containsKey(1) ? rupeeMandatorySteps.get(1).getCurrentSteps() * missingGreen : 0) +
-                1D * (rupeeMandatorySteps.containsKey(2) ? rupeeMandatorySteps.get(2).getCurrentSteps() * missingOrange : 0) +
-                1D * (rupeeMandatorySteps.containsKey(3) ? rupeeMandatorySteps.get(3).getCurrentSteps() * missingYellow : 0);
+                (1D * (rupeeMandatorySteps.containsKey(0) ? rupeeMandatorySteps.get(0).getCurrentSteps() : 0) +
+                1D * (rupeeMandatorySteps.containsKey(1) ? rupeeMandatorySteps.get(1).getCurrentSteps() : 0) +
+                1D * (rupeeMandatorySteps.containsKey(2) ? rupeeMandatorySteps.get(2).getCurrentSteps() : 0) +
+                1D * (rupeeMandatorySteps.containsKey(3) ? rupeeMandatorySteps.get(3).getCurrentSteps()  : 0));
     }
 }
 
