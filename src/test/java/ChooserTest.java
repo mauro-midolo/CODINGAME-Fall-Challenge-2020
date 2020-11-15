@@ -128,4 +128,21 @@ public class ChooserTest {
         String choose = new Chooser().getBest(me, oppositeInventory, brews, casts, oppositeCasts);
         assertEquals("CAST 1", choose);
     }
+
+    @Test
+    public void shouldConsideringInventoryEvolution() {
+        PlayerInventory me = new PlayerInventory(0, 0, 0, 0, 0);
+        List<Component> brews = Arrays.asList(
+                new Brew(1, "BREW", -1, -1, -1, 0, 2, 0, 0, false, false),
+                new Brew(2, "BREW", 0, 0, 0, -2, 2, 0, 0, false, false)
+        );
+
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +1, +1, +1, 0, 0, 0, 0, true, false),
+                new Cast(2, "CAST", 0, 0, 0, +1, 0, 0, 0, true, false),
+                new Cast(3, "CAST", 0, 0, +1, +1, 0, 0, 0, true, false)
+        );
+        String choose = new Chooser().getBest(me, me, brews, casts, casts);
+        assertEquals("CAST 1", choose);
+    }
 }
