@@ -81,6 +81,30 @@ class PlayerInventory implements Cloneable {
     }
 }
 
+class ComponentResult {
+    private final Component component;
+    private final long count;
+
+    public ComponentResult(Component component, long count) {
+        this.component = component;
+        this.count = count;
+    }
+
+    public ComponentResult(Component component) {
+        this.component = component;
+        this.count = 1;
+    }
+
+    @Override
+    public String toString() {
+        if (count == 1) {
+            return component.toString();
+        }
+
+        return component.toString() + " " + count;
+    }
+}
+
 abstract class Component implements Cloneable {
     protected Component(int actionId, String actionType, int blueCost, int greenCost, int orangeCost, int yellowCost, int price, int tomeIndex, int taxCount, boolean castable, boolean repeatable) {
         this.actionId = actionId;
@@ -106,6 +130,11 @@ abstract class Component implements Cloneable {
     final int tomeIndex;
     final int taxCount;
     boolean castable;
+
+    public boolean isRepeatable() {
+        return repeatable;
+    }
+
     final boolean repeatable;
 
     String getActionType() {
@@ -116,9 +145,11 @@ abstract class Component implements Cloneable {
         this.castable = castable;
     }
 
-    public boolean isLearn(){
+    public boolean isLearn() {
         return false;
-    };
+    }
+
+    ;
 
     public abstract Component clone();
 
@@ -355,8 +386,8 @@ class Chooser {
         if (casts.size() == 0) {
             return inventoryChoose.toString();
         }
-        Component best = new BestCastChooser().getBest(me, oppositeInventory, brews, casts, oppositeCasts);
-        return best.toString();
+        ComponentResult bestResult = new BestCastChooser().getBest(me, oppositeInventory, brews, casts, oppositeCasts);
+        return bestResult.toString();
     }
 
 
@@ -383,7 +414,7 @@ class BestCastChooser {
 
     public static final double OPPOSITE_SCORE_WEIGTH = 0.5D;
 
-    public Component getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
+    public ComponentResult getBest(PlayerInventory me, PlayerInventory oppositeInventory, List<Component> brews, List<Component> casts, List<Component> oppositeCasts) {
 
         Component cheapestBrew = null;
         Double maxRateScore = null;
@@ -402,9 +433,15 @@ class BestCastChooser {
             }
         }
         if (cheapestBrew == null || bestRupeeSteps.getCurrentSteps() == 0) {
-            return new Wait();
+            return new ComponentResult(new Wait());
         }
-        return bestRupeeSteps.getSteps().get(0);
+
+        Component component = bestRupeeSteps.getSteps().get(0);
+        if (component.isRepeatable()) {
+            long count = bestRupeeSteps.getSteps().stream().filter(component1 -> component1.equals(component)).count();
+            return new ComponentResult(component, count);
+        }
+        return new ComponentResult(component);
     }
 
     private boolean notStepsAvailable(Route route) {
@@ -446,7 +483,8 @@ class WeighCalculator {
         for (RupeesIndexer rupeesIndexer : RupeesIndexer.values()) {
             try {
                 calculateStepsFor(rupeesIndexer.getIndex(), route, brew, brew.getCostFor(rupeesIndexer.getIndex()));
-            } catch (CodingGameException ignored) { }
+            } catch (CodingGameException ignored) {
+            }
         }
         return route;
     }
@@ -540,10 +578,6 @@ class Route implements Cloneable {
     }
 
     private PlayerInventory me;
-    private int blockBlue = 0;
-    private int blockYellow = 0;
-    private int blockGreen = 0;
-    private int blockOrange = 0;
 
     Route(List<Component> casts, List<Component> steps, PlayerInventory me) {
         this.casts = casts.stream().map(Component::clone).collect(Collectors.toList());

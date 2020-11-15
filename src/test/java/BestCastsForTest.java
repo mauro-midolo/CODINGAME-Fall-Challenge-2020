@@ -24,7 +24,7 @@ public class BestCastsForTest {
 
 
         Brew brew = new Brew(42, Brew.COMPONENT, 0, -1, 0, 0, 10, 0, 0, false, false);
-        Component command = new BestCastChooser().getBest(playerInventory, oppositeInventory, Collections.singletonList(brew), casts, oppositeCasts);
+        ComponentResult command = new BestCastChooser().getBest(playerInventory, oppositeInventory, Collections.singletonList(brew), casts, oppositeCasts);
         assertEquals("CAST 10", command.toString());
     }
 
