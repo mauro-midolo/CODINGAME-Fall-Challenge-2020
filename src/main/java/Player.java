@@ -480,13 +480,25 @@ class ComponentBuilder {
 class WeighCalculator {
     public Route calculateSteps(PlayerInventory me, List<Component> casts, Component brew) {
         Route route = new Route(casts, new LinkedList<>(), me);
-        for (RupeesIndexer rupeesIndexer : RupeesIndexer.values()) {
-            try {
-                calculateStepsFor(rupeesIndexer.getIndex(), route, brew, brew.getCostFor(rupeesIndexer.getIndex()));
-            } catch (CodingGameException ignored) {
+        boolean findRoute= true;
+        while (notHaveAll(brew, route.getMe()) && findRoute)
+            for (RupeesIndexer rupeesIndexer : RupeesIndexer.values()) {
+                try {
+                    calculateStepsFor(rupeesIndexer.getIndex(), route, brew, brew.getCostFor(rupeesIndexer.getIndex()));
+                } catch (CodingGameException ignored) {
+                    findRoute= false;
+                }
             }
-        }
         return route;
+    }
+
+    private boolean notHaveAll(Component brew, PlayerInventory me) {
+        for (RupeesIndexer value : RupeesIndexer.values()) {
+            if (brew.getCostFor(value.getIndex()) + me.getNumberOf(value.getIndex()) < 0){
+                return true;
+            };
+        }
+        return false;
     }
 
     void calculateStepsFor(int index, Route currentRoute, Component brew, int debitsCount) throws CodingGameException {
