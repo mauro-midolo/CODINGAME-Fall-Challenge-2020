@@ -73,11 +73,14 @@ class PlayerInventory implements Cloneable {
         return 0;
     }
 
-    public void update(int index, int deltaValue) {
+    public void update(int index, int deltaValue)  {
         if (index == RupeesIndexer.BLUE.getIndex()) blue += deltaValue;
         if (index == RupeesIndexer.GREEN.getIndex()) green += deltaValue;
         if (index == RupeesIndexer.ORANGE.getIndex()) orange += deltaValue;
         if (index == RupeesIndexer.YELLOW.getIndex()) yellow += deltaValue;
+//        if(blue<0 || green<0 || orange <0 || yellow<0){
+//            throw new IllegalArgumentException("Illegal Inventory state");
+//        }
     }
 
     public int getScore() {
