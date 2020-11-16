@@ -164,4 +164,35 @@ public class ChooserTest {
         assertTrue(choose + " is not contains", Arrays.asList("CAST 2", "CAST 3").contains(choose));
     }
 
+    @Test
+    public void realGameBug() {
+        PlayerInventory me = new PlayerInventory(2, 1, 0, 0, 0);
+        PlayerInventory other = new PlayerInventory(3, 0, 0, 0, 0);
+        List<Component> brews = Arrays.asList(
+                new Brew(100, "BREW", -3, 0, 0, -3, 11+3, 0, 0, false, false),
+                new Brew(101, "BREW", -2, 0, 0, -2, 10+1, 0, 0, false, false),
+                new Brew(102, "BREW", -2, -2, 0, -2, 15, 0, 0, false, false),
+                new Brew(103, "BREW", 0, -5, 0, 0, 10, 0, 0, false, false),
+                new Brew(104, "BREW", -1, 0, -2, -1, 12, 0, 0, false, false)
+        );
+
+        List<Component> casts = Arrays.asList(
+                new Cast(1, "CAST", +2, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(2, "CAST", -1, +1, 0, 0, 0, 0, 0, false, false),
+                new Cast(3, "CAST", 0, -1, +1, 0, 0, 0, 0, true, false),
+                new Cast(4, "CAST", 0, 0, 0, +1, 0, 0, 0, true, false)
+        );
+
+        List<Component> oppositeCasts = Arrays.asList(
+                new Cast(10, "CAST", +2, 0, 0, 0, 0, 0, 0, true, false),
+                new Cast(20, "CAST", -1, +1, 0, 0, 0, 0, 0, true, false),
+                new Cast(30, "CAST", 0, -1, +1, 0, 0, 0, 0, true, false),
+                new Cast(40, "CAST", 0, 0, 0, +1, 0, 0, 0, true, false),
+                new Cast(50, "CAST", +2, 3, -2, 0, 0, 0, 0, true, false),
+                new Cast(60, "CAST", +3, 0, 0, 0, 0, 0, 0, true, false)
+        );
+        String choose = new Chooser().getBest(me, other, brews, casts, oppositeCasts);
+        String a ="";
+    }
+
 }

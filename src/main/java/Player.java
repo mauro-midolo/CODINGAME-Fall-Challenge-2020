@@ -73,7 +73,7 @@ class PlayerInventory implements Cloneable {
         return 0;
     }
 
-    public void update(int index, int deltaValue)  {
+    public void update(int index, int deltaValue) {
         if (index == RupeesIndexer.BLUE.getIndex()) blue += deltaValue;
         if (index == RupeesIndexer.GREEN.getIndex()) green += deltaValue;
         if (index == RupeesIndexer.ORANGE.getIndex()) orange += deltaValue;
@@ -501,16 +501,12 @@ class WeighCalculator {
         boolean findRoute = true;
         while (notHaveAll(brew, route.getMe()) && findRoute) {
             try {
-                calculateStepsFor(new Debit(brew.getBlueCost(), brew.getGreenCost(), brew.getOrangeCost(), brew.getYellowCost()), route, brew);
+                calculateStepsFor(route, brew, 0, Optional.empty());
             } catch (CodingGameException ignored) {
                 findRoute = false;
             }
         }
         return route;
-    }
-
-    private boolean possibleToUse(Component cast, PlayerInventory me) {
-        return !notSpaceInInventory(cast, me) && !notCostAvailable(cast, me);
     }
 
     private boolean notCostAvailable(Component cast, PlayerInventory me) {
@@ -548,19 +544,25 @@ class WeighCalculator {
         return false;
     }
 
-    void calculateStepsFor(Debit debit, Route currentRoute, Component brew) throws CodingGameException {
-
-        if (!debit.hasDebits(currentRoute.getMe())) {
+    void calculateStepsFor(Route currentRoute, Component brew, int recursiveCount, Optional<Debit> debit) throws CodingGameException {
+        if (recursiveCount > 4) {
+            throw new NoRouteFoundException("Too much recursive");
+        }
+        if ((debit.isPresent() && !debit.get().hasDebits(currentRoute.getMe())) || !hasDebit(currentRoute, brew)) {
             return;
         }
-        Debit debitToSolve = new Debit(debit.get(0) + currentRoute.getMe().getBlue(), debit.get(1) + currentRoute.getMe().getGreen(), debit.get(2) + currentRoute.getMe().getOrange(), debit.get(3) + currentRoute.getMe().getYellow());
+        Debit debitToSolve = debit.orElseGet(() -> new Debit(brew.getCostFor(0) + currentRoute.getMe().getBlue(), brew.getCostFor(1) + currentRoute.getMe().getGreen(), brew.getCostFor(2) + currentRoute.getMe().getOrange(), brew.getCostFor(3) + currentRoute.getMe().getYellow()));
         List<Component> castsWithColor = getCastWith(debitToSolve, currentRoute.getCasts());
         if (castsWithColor.isEmpty()) {
             throw new NoCastAvailableException("No Casts useful");
         }
         Route minCastRoute = null;
         for (Component castWithColor : castsWithColor) {
-            minCastRoute = calculateBestLeaf(currentRoute, castWithColor, brew, debitToSolve, minCastRoute);
+            try {
+                Route bestLeafRoute = calculateBestLeaf(currentRoute, castWithColor, brew, minCastRoute, recursiveCount, debit);
+                minCastRoute = compareBestRoute(minCastRoute, bestLeafRoute);
+            } catch (CodingGameException ignore) {
+            }
         }
         if (minCastRoute == null) {
             throw new NoRouteFoundException("");
@@ -571,13 +573,32 @@ class WeighCalculator {
         currentRoute.updateInventory(minCastRoute.getMe());
     }
 
+    private boolean hasDebit(Route currentRoute, Component brew) {
+        for (RupeesIndexer value : RupeesIndexer.values()) {
+            if (brew.getCostFor(value.getIndex()) + currentRoute.getMe().getNumberOf(value.getIndex()) < 0) {
+                return true;
+            }
+        }
+        return false;
+    }
 
-    private Route calculateBestLeaf(Route currentRoute, Component castWithColor, Component brew, Debit debit, Route minCastRoute) throws CodingGameException {
+    private Route compareBestRoute(Route minCastRoute, Route bestLeafRoute) {
+        if (minCastRoute == null) {
+            return bestLeafRoute;
+        }
+        if (bestLeafRoute != null && minCastRoute.getCurrentSteps() > bestLeafRoute.getCurrentSteps()) {
+            return bestLeafRoute;
+        }
+        return minCastRoute;
+    }
+
+
+    private Route calculateBestLeaf(Route currentRoute, Component castWithColor, Component brew, Route minCastRoute, int recursiveCount, Optional<Debit> debit) throws CodingGameException {
         Route leafRoute = currentRoute.clone();
-        Debit leafDebit = debit.clone();
+        //Debit leafDebit = debit.clone();
         Component leafCastWithColor = leafRoute.getCast(String.valueOf(castWithColor.actionId));
 
-        executeCastsFor(leafRoute, leafCastWithColor, brew);
+        executeCastsFor(leafRoute, leafCastWithColor, brew, recursiveCount);
 
         if (!leafCastWithColor.isCastable()) {
             leafRoute.addStep(new Rest());
@@ -591,24 +612,17 @@ class WeighCalculator {
         }
         leafRoute.addStep(leafCastWithColor);
 
-        calculateStepsFor(leafDebit, leafRoute, brew);
-        if (minCastRoute == null || minCastRoute.getCurrentSteps() > leafRoute.getCurrentSteps()) {
-            minCastRoute = leafRoute;
-        }
-        return minCastRoute;
+        calculateStepsFor(leafRoute, brew, recursiveCount + 1, debit);
+        return leafRoute;
     }
 
-    private void executeCastsFor(Route leafRoute, Component leafCast, Component brew) throws CodingGameException {
+    private void executeCastsFor(Route leafRoute, Component leafCast, Component brew, int recursiveCount) throws CodingGameException {
         Debit castDebits = new Debit(
                 leafCast.getBlueCost() < 0 ? leafCast.getCostFor(0) : 0,
                 leafCast.getGreenCost() < 0 ? leafCast.getCostFor(1) : 0,
                 leafCast.getOrangeCost() < 0 ? leafCast.getCostFor(2) : 0,
                 leafCast.getYellowCost() < 0 ? leafCast.getCostFor(3) : 0);
-        calculateStepsFor(castDebits, leafRoute, brew);
-    }
-
-    private int getDebitsCount(Component first, int index) {
-        return abs(first.getCostFor(index));
+        calculateStepsFor(leafRoute, brew, recursiveCount + 1, Optional.of(castDebits));
     }
 
     private List<Component> getCastWith(Debit debit, List<Component> casts) {
@@ -763,5 +777,24 @@ class Debit implements Cloneable {
     @Override
     public Debit clone() {
         return new Debit(blue, green, orange, yellow);
+    }
+
+    @Override
+    public String toString() {
+        return "Debit{" +
+                "blue=" + blue +
+                ", green=" + green +
+                ", orange=" + orange +
+                ", yellow=" + yellow +
+                '}';
+    }
+}
+
+class Logging {
+    private static boolean log = true;
+
+    public static void log(String message) {
+        if (log)
+            System.out.println(message);
     }
 }
